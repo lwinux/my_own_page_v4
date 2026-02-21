@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MyOwnPage{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-bold">Your Profiles</h1>
+    <p class="text-sm text-gray-500 mt-1">Each profile is a tailored CV + link for one opportunity.</p>
+  </div>
+
+  <!-- Create new profile modal trigger -->
+  <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+    class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors">
+    + New Profile
+  </button>
+</div>
+
+{% if profiles %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {% for profile in profiles %}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3">
+    <div class="flex items-start justify-between">
+      <div>
+        <h2 class="font-semibold text-gray-900">{{ profile.profile_name }}</h2>
+        {% if profile.company_note %}
+        <p class="text-sm text-gray-400 mt-0.5">📝 {{ profile.company_note }}</p>
+        {% endif %}
+        <p class="text-xs text-gray-400 mt-1">
+          Slug: <code class="font-mono text-indigo-500">{{ profile.profile_slug }}</code>
+        </p>
+      </div>
+      <span class="text-xs text-gray-400 whitespace-nowrap ml-2">
+        {{ profile.created_at[:10] }}
+      </span>
+    </div>
+
+    {% if profile.latest_version %}
+    <div class="bg-gray-50 rounded-lg px-3 py-2 text-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-gray-500">Latest: v{{ profile.latest_version.version_number }}</span>
+        <a href="{{ profile.latest_version.public_url }}"
+          target="_blank"
+          class="text-indigo-600 hover:underline text-xs font-medium">
+          View public page ↗
+        </a>
+      </div>
+      <p class="text-xs text-gray-400 mt-1 font-mono truncate">
+        {{ profile.latest_version.public_url }}
+      </p>
+    </div>
+    {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-sm text-amber-700">
+      No published version yet. Open editor and publish.
+    </div>
+    {% endif %}
+
+    <div class="flex gap-2 pt-1">
+      <a href="/app/profiles/{{ profile.id }}/edit"
+        class="flex-1 text-center bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg py-1.5 text-sm font-medium hover:bg-indigo-100 transition-colors">
+        Edit
+      </a>
+
+      <!-- Inline update form (company note only) -->
+      <button onclick="toggleUpdateForm('{{ profile.id }}')"
+        class="flex-1 text-center bg-gray-50 text-gray-700 border border-gray-200 rounded-lg py-1.5 text-sm font-medium hover:bg-gray-100 transition-colors">
+        Update
+      </button>
+    </div>
+
+    <!-- Inline update form (hidden by default) -->
+    <form id="update-{{ profile.id }}" method="POST"
+      action="/app/profiles/{{ profile.id }}/update"
+      class="hidden space-y-2 pt-1 border-t border-gray-100">
+      <input type="text" name="profile_name" value="{{ profile.profile_name }}"
+        placeholder="Profile name"
+        class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+      <input type="text" name="company_note" value="{{ profile.company_note }}"
+        placeholder="Private note (company, role…)"
+        class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+      <button type="submit"
+        class="w-full bg-gray-700 text-white rounded-lg py-1.5 text-sm font-medium hover:bg-gray-800 transition-colors">
+        Save Changes
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center py-20 text-gray-400">
+  <p class="text-5xl mb-4">📄</p>
+  <p class="text-lg font-medium text-gray-600">No profiles yet</p>
+  <p class="text-sm mt-1">Create your first profile to get started.</p>
+  <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+    class="mt-6 bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors">
+    + Create Profile
+  </button>
+</div>
+{% endif %}
+
+<!-- ── Create Profile Modal ── -->
+<div id="create-modal"
+  class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-semibold">New Profile</h3>
+      <button onclick="document.getElementById('create-modal').classList.add('hidden')"
+        class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+    </div>
+    <form method="POST" action="/app/profiles/create" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name *</label>
+        <input type="text" name="profile_name" required
+          placeholder="e.g. Senior Engineer @ Stripe"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <p class="text-xs text-gray-400 mt-1">Will become the public URL slug</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Private Note (optional)</label>
+        <input type="text" name="company_note"
+          placeholder="Why this role, salary range, contact…"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <p class="text-xs text-gray-400 mt-1">Only visible to you, never published</p>
+      </div>
+      <button type="submit"
+        class="w-full bg-indigo-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-indigo-700 transition-colors">
+        Create & Open Editor
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleUpdateForm(id) {
+  const form = document.getElementById('update-' + id);
+  form.classList.toggle('hidden');
+}
+
+// Close modal on backdrop click
+document.getElementById('create-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.add('hidden');
+});
+</script>
+{% endblock %}

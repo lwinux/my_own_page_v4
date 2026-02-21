@@ -1,0 +1,67 @@
+/* ── Field helpers (used in editor + auth forms) ── */
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.field-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background: #fff;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+textarea.field-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ── Dynamic list item card ── */
+.list-item-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: #fafafa;
+  position: relative;
+}
+
+.list-item-card .remove-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-size: 1rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.list-item-card .remove-btn:hover {
+  color: #ef4444;
+}
+
+/* ── Tag list (inline comma-separated) ── */
+.tag-input-hint {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* ── Button states ── */
+#btn-save:disabled,
+#btn-publish:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

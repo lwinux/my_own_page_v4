@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% set p = profile.json_data %}
+{% set personal = p.personal %}
+
+{% block title %}{{ personal.full_name }} — {{ personal.title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen">
+
+  <!-- ── Hero ────────────────────────────────────────────────────────── -->
+  <header class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white">
+    <div class="max-w-4xl mx-auto px-6 py-16 sm:py-20">
+      <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">{{ personal.full_name }}</h1>
+      <p class="text-indigo-200 text-xl mt-2 font-light">{{ personal.title }}</p>
+
+      <div class="flex flex-wrap gap-4 mt-6 text-sm text-indigo-200">
+        {% if personal.location %}
+        <span>📍 {{ personal.location }}</span>
+        {% endif %}
+        <a href="mailto:{{ personal.email }}" class="hover:text-white transition-colors">
+          ✉️ {{ personal.email }}
+        </a>
+        {% if personal.phone %}
+        <span>📞 {{ personal.phone }}</span>
+        {% endif %}
+      </div>
+
+      <div class="flex flex-wrap gap-3 mt-4">
+        {% if personal.linkedin %}
+        <a href="{{ personal.linkedin }}" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors">
+          LinkedIn ↗
+        </a>
+        {% endif %}
+        {% if personal.github %}
+        <a href="{{ personal.github }}" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors">
+          GitHub ↗
+        </a>
+        {% endif %}
+        {% if personal.website %}
+        <a href="{{ personal.website }}" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors">
+          Website ↗
+        </a>
+        {% endif %}
+      </div>
+
+      {% if personal.summary %}
+      <p class="mt-8 text-indigo-100 text-base leading-relaxed max-w-2xl">
+        {{ personal.summary }}
+      </p>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- ── Main content ────────────────────────────────────────────────── -->
+  <main class="max-w-4xl mx-auto px-6 py-10 space-y-12">
+
+    <!-- Skills -->
+    {% if p.skills %}
+    <section>
+      <h2 class="section-heading">Skills</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+        {% for group in p.skills %}
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2">{{ group.category }}</h3>
+          <div class="flex flex-wrap gap-1.5">
+            {% for skill in group.items %}
+            <span class="skill-tag">{{ skill }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Experience -->
+    {% if p.experience %}
+    <section>
+      <h2 class="section-heading">Work Experience</h2>
+      <div class="space-y-6 mt-4">
+        {% for job in p.experience %}
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">{{ job.position }}</h3>
+              <p class="text-indigo-600 font-medium">{{ job.company }}</p>
+            </div>
+            <div class="text-sm text-gray-400 whitespace-nowrap">
+              {{ job.start_date }} — {{ job.end_date or "Present" }}
+              {% if job.location %}
+              <span class="block text-right">{{ job.location }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if job.description %}
+          <p class="text-gray-600 text-sm mt-3 leading-relaxed">{{ job.description }}</p>
+          {% endif %}
+          {% if job.highlights %}
+          <ul class="mt-3 space-y-1">
+            {% for h in job.highlights %}
+            <li class="flex gap-2 text-sm text-gray-700">
+              <span class="text-indigo-500 mt-0.5">▸</span>
+              <span>{{ h }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Projects -->
+    {% if p.projects %}
+    <section>
+      <h2 class="section-heading">Projects</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        {% for proj in p.projects %}
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
+          <div class="flex items-start justify-between">
+            <h3 class="font-semibold text-gray-900">{{ proj.name }}</h3>
+            {% if proj.url %}
+            <a href="{{ proj.url }}" target="_blank" rel="noopener noreferrer"
+              class="text-indigo-500 hover:text-indigo-700 text-sm shrink-0 ml-2">↗</a>
+            {% endif %}
+          </div>
+          {% if proj.description %}
+          <p class="text-sm text-gray-600 leading-relaxed">{{ proj.description }}</p>
+          {% endif %}
+          {% if proj.tech_stack %}
+          <div class="flex flex-wrap gap-1.5">
+            {% for tech in proj.tech_stack %}
+            <span class="skill-tag">{{ tech }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if proj.highlights %}
+          <ul class="space-y-1">
+            {% for h in proj.highlights %}
+            <li class="flex gap-2 text-xs text-gray-600">
+              <span class="text-purple-400">▸</span>
+              <span>{{ h }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Education -->
+    {% if p.education %}
+    <section>
+      <h2 class="section-heading">Education</h2>
+      <div class="space-y-4 mt-4">
+        {% for edu in p.education %}
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+            <div>
+              <h3 class="font-semibold text-gray-900">{{ edu.degree }}{% if edu.field %} in {{ edu.field }}{% endif %}</h3>
+              <p class="text-indigo-600 text-sm">{{ edu.institution }}</p>
+            </div>
+            <p class="text-sm text-gray-400 whitespace-nowrap">
+              {{ edu.start_date }} — {{ edu.end_date or "Present" }}
+            </p>
+          </div>
+          {% if edu.gpa %}
+          <p class="text-xs text-gray-400 mt-1">GPA: {{ edu.gpa }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Languages + Certifications side-by-side -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+
+      {% if p.languages %}
+      <section>
+        <h2 class="section-heading">Languages</h2>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mt-4">
+          <ul class="divide-y divide-gray-50">
+            {% for lang in p.languages %}
+            <li class="flex items-center justify-between py-2 text-sm">
+              <span class="font-medium text-gray-800">{{ lang.language }}</span>
+              <span class="proficiency-badge proficiency-{{ lang.proficiency | lower }}">
+                {{ lang.proficiency }}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if p.certifications %}
+      <section>
+        <h2 class="section-heading">Certifications</h2>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mt-4 space-y-3">
+          {% for cert in p.certifications %}
+          <div>
+            <div class="flex items-start justify-between">
+              <p class="text-sm font-medium text-gray-800">{{ cert.name }}</p>
+              {% if cert.url %}
+              <a href="{{ cert.url }}" target="_blank" rel="noopener noreferrer"
+                class="text-indigo-400 hover:text-indigo-600 text-xs ml-2 shrink-0">↗</a>
+              {% endif %}
+            </div>
+            <p class="text-xs text-gray-400">{{ cert.issuer }}{% if cert.date %} · {{ cert.date }}{% endif %}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+    </div>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────── -->
+  <footer class="border-t border-gray-100 mt-16 py-6">
+    <div class="max-w-4xl mx-auto px-6 text-center text-xs text-gray-400">
+      Version {{ profile.version_number }} · Published {{ profile.created_at[:10] }} · Powered by MyOwnPage
+    </div>
+  </footer>
+
+</div>
+{% endblock %}

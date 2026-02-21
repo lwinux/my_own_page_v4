@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Editor — {{ profile.profile_name }}{% endblock %}
+
+{% block main_class %}max-w-4xl mx-auto px-4 sm:px-6 py-8{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <a href="/app" class="text-sm text-gray-400 hover:text-gray-600">← Back to Dashboard</a>
+    <h1 class="text-xl font-bold mt-1">{{ profile.profile_name }}</h1>
+    <p class="text-xs text-gray-400">slug: <code class="font-mono text-indigo-500">{{ profile.profile_slug }}</code></p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span id="save-status" class="text-xs text-gray-400 hidden">Saved ✓</span>
+    <button id="btn-discard"
+      class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+      Discard Draft
+    </button>
+    <button id="btn-save"
+      class="px-4 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-medium">
+      Save Draft
+    </button>
+    <button id="btn-publish"
+      class="px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+      Publish ↗
+    </button>
+  </div>
+</div>
+
+<!-- Publish success banner -->
+<div id="publish-banner" class="hidden mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800 flex items-center justify-between">
+  <span>✅ Published! <a id="publish-link" href="#" target="_blank" class="font-medium underline ml-1">View public page</a></span>
+  <button onclick="document.getElementById('publish-banner').classList.add('hidden')" class="opacity-60 hover:opacity-100">✕</button>
+</div>
+
+<!-- Error banner -->
+<div id="error-banner" class="hidden mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+  <span id="error-msg"></span>
+  <button onclick="document.getElementById('error-banner').classList.add('hidden')" class="opacity-60 hover:opacity-100">✕</button>
+</div>
+
+<!-- ── Editor Form ── -->
+<form id="editor-form" class="space-y-8">
+
+  <!-- Personal Info -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <h2 class="text-base font-semibold mb-4 text-gray-800">Personal Information</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="sm:col-span-2">
+        <label class="field-label">Full Name *</label>
+        <input class="field-input" id="p-full_name" name="full_name" type="text" required placeholder="John Doe" />
+      </div>
+      <div>
+        <label class="field-label">Professional Title *</label>
+        <input class="field-input" id="p-title" name="title" type="text" required placeholder="Senior Software Engineer" />
+      </div>
+      <div>
+        <label class="field-label">Email *</label>
+        <input class="field-input" id="p-email" name="email" type="email" required placeholder="john@example.com" />
+      </div>
+      <div>
+        <label class="field-label">Phone</label>
+        <input class="field-input" id="p-phone" name="phone" type="tel" placeholder="+1 555 000 0000" />
+      </div>
+      <div>
+        <label class="field-label">Location</label>
+        <input class="field-input" id="p-location" name="location" type="text" placeholder="San Francisco, CA" />
+      </div>
+      <div>
+        <label class="field-label">LinkedIn URL</label>
+        <input class="field-input" id="p-linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/..." />
+      </div>
+      <div>
+        <label class="field-label">GitHub URL</label>
+        <input class="field-input" id="p-github" name="github" type="url" placeholder="https://github.com/..." />
+      </div>
+      <div>
+        <label class="field-label">Website</label>
+        <input class="field-input" id="p-website" name="website" type="url" placeholder="https://yoursite.com" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="field-label">Professional Summary *</label>
+        <textarea class="field-input" id="p-summary" name="summary" rows="4" required
+          placeholder="A brief statement about your background and goals..."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- Experience -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Work Experience</h2>
+      <button type="button" onclick="addItem('experience')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add</button>
+    </div>
+    <div id="experience-list" class="space-y-4"></div>
+  </section>
+
+  <!-- Education -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Education</h2>
+      <button type="button" onclick="addItem('education')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add</button>
+    </div>
+    <div id="education-list" class="space-y-4"></div>
+  </section>
+
+  <!-- Skills -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Skills</h2>
+      <button type="button" onclick="addItem('skills')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add Group</button>
+    </div>
+    <div id="skills-list" class="space-y-4"></div>
+  </section>
+
+  <!-- Projects -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Projects</h2>
+      <button type="button" onclick="addItem('projects')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add</button>
+    </div>
+    <div id="projects-list" class="space-y-4"></div>
+  </section>
+
+  <!-- Languages -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Languages</h2>
+      <button type="button" onclick="addItem('languages')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add</button>
+    </div>
+    <div id="languages-list" class="space-y-4"></div>
+  </section>
+
+  <!-- Certifications -->
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">Certifications</h2>
+      <button type="button" onclick="addItem('certifications')"
+        class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add</button>
+    </div>
+    <div id="certifications-list" class="space-y-4"></div>
+  </section>
+
+</form>
+
+<!-- Inject server-provided draft for hydration -->
+<script id="initial-draft" type="application/json">{{ draft_json | safe }}</script>
+<script>
+  window.PROFILE_ID = {{ profile.id | tojson }};
+</script>
+<script src="/app/static/js/editor.js"></script>
+{% endblock %}
