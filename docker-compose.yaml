@@ -17,15 +17,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-myownpage}
-      POSTGRES_USER: ${POSTGRES_USER:-myownpage}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myownpage}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -50,10 +50,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-myownpage}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-myownpage}
-      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER:-myownpage}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-myownpage}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production-min-32-chars}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
@@ -80,7 +80,7 @@ services:
       dockerfile: Dockerfile
     environment:
       BACKEND_URL: http://backend:8000
-      SECRET_KEY: ${FRONTEND1_SECRET_KEY:-change-this-frontend1-secret}
+      SECRET_KEY: ${FRONTEND1_SECRET_KEY}
       APP_ENV: ${APP_ENV:-development}
       DEBUG: ${DEBUG:-false}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
@@ -96,6 +96,7 @@ services:
       dockerfile: Dockerfile
     environment:
       BACKEND_URL: http://backend:8000
+      SECRET_KEY: ${FRONTEND2_SECRET_KEY}
       APP_ENV: ${APP_ENV:-development}
       DEBUG: ${DEBUG:-false}
     depends_on:
