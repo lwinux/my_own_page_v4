@@ -81,6 +81,9 @@ jobs:
       - name: Update kubeconfig (EKS)
         run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
 
+      - name: Who am I (STS)?
+        run: aws sts get-caller-identity
+
       - name: Ensure namespace exists
         run: |
           kubectl get ns "$K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$K8S_NAMESPACE"
@@ -109,7 +112,6 @@ jobs:
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/redis/redis-service.yaml
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/backend/backend-service.yaml
 
-      # 4) wait for rollouts (only if deployments exist)
       - name: Wait for rollouts
         run: |
           set -euo pipefail
@@ -118,7 +120,6 @@ jobs:
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/redis --timeout=180s
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/backend --timeout=180s
 
-      # optional: quick sanity checks (adjust names if needed)
       - name: Sanity check (pods + services)
         run: |
           kubectl -n "$K8S_NAMESPACE" get pods -o wide
