@@ -1,0 +1,73 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION:        ${{ secrets.AWS_REGION }}
+  EKS_CLUSTER_NAME:  ${{ secrets.EKS_CLUSTER_NAME }}
+  K8S_NAMESPACE:     ${{ secrets.K8S_NAMESPACE }}
+  DOCKER_ORG:        ${{ secrets.DOCKER_ORG }}
+  INGRESS_HOST:      ${{ secrets.INGRESS_HOST }}
+  # App env (from .env → GitHub Secrets) for docker compose / tests
+  POSTGRES_DB:       ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER:     ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  JWT_SECRET_KEY:    ${{ secrets.JWT_SECRET_KEY }}
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES:  ${{ secrets.JWT_ACCESS_TOKEN_EXPIRE_MINUTES }}
+  JWT_REFRESH_TOKEN_EXPIRE_DAYS:    ${{ secrets.JWT_REFRESH_TOKEN_EXPIRE_DAYS }}
+  APP_ENV:           ${{ secrets.APP_ENV }}
+  DEBUG:             ${{ secrets.DEBUG }}
+  FRONTEND1_SECRET_KEY:   ${{ secrets.FRONTEND1_SECRET_KEY }}
+  FRONTEND2_SECRET_KEY:   ${{ secrets.FRONTEND2_SECRET_KEY }}
+  SESSION_COOKIE_SECURE:  ${{ secrets.SESSION_COOKIE_SECURE }}
+  ALLOWED_ORIGINS:   ${{ secrets.ALLOWED_ORIGINS }}
+  FEATURE_RATE_LIMITING: ${{ secrets.FEATURE_RATE_LIMITING }}
+  RATE_LIMIT_AUTH:   ${{ secrets.RATE_LIMIT_AUTH }}
+  FEATURE_PDF_EXPORT:     ${{ secrets.FEATURE_PDF_EXPORT }}
+  FEATURE_THEMES:    ${{ secrets.FEATURE_THEMES }}
+
+jobs:
+  build:
+    name: Build & Push (${{ matrix.service.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false #default ist in gh true - hiermit deaktiviert, damit alle services gebaut werden, auch wenn einer fehlschlägt
+      matrix:
+        service:
+          - name: backend
+            context: backend
+            image: my-own-web-page-backend
+          - name: frontend1
+            context: frontend1
+            image: my-own-web-page-frontend1
+          - name: frontend2
+            context: frontend2
+            image: my-own-web-page-frontend2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_ORG }}/${{ matrix.service.image }}:${{ github.sha }}
+            ${{ secrets.DOCKER_ORG }}/${{ matrix.service.image }}:latest
+          cache-from: type=gha #lädt Cache beim nächsten Run für schnellere builds
+          cache-to: type=gha,mode=max #speichert Docker Layer im GitHub Cache, Docker hat keinen Cache
+
+      - name: Check backend tests
+        run: docker compose run --rm backend python -m pytest tests
