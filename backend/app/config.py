@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ── Application ───────────────────────────────────────────────────────────
     APP_ENV: str = "development"
-    DEBUG: bool = False
+    DEBUG: bool = True
     ALLOWED_ORIGINS: str = "http://localhost,http://localhost:80"
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────
