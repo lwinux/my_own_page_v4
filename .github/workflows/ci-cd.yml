@@ -1,7 +1,7 @@
 name: CI/CD Pipeline
 on:
   push:
-    branches: [ main ]
+    branches: [ feat/tests ]
   workflow_dispatch:
 
 env:
