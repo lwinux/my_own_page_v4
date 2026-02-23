@@ -79,7 +79,22 @@ jobs:
           version: v1.29.0
 
       - name: Update kubeconfig (EKS)
-        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/kube"
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME" \
+            --kubeconfig "$RUNNER_TEMP/kube/config"
+
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+
+      - name: Verify kubectl context
+        run: |
+          set -euo pipefail
+          echo "KUBECONFIG=$KUBECONFIG"
+          kubectl config get-contexts
+          kubectl cluster-info    
 
       - name: Who am I (STS)?
         run: aws sts get-caller-identity
