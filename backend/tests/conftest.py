@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
+from pytest import FixtureRequest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import JSON, event
 from sqlalchemy.ext.asyncio import (
@@ -109,11 +110,13 @@ async def client(db: AsyncSession, mock_redis):
 
 
 @pytest_asyncio.fixture
-async def registered_user(db: AsyncSession) -> dict:
+async def registered_user(db: AsyncSession, request: FixtureRequest) -> dict:
     """Create a user directly in DB and return credentials + token."""
+
+    unique = request.node.name
     user = User(
-        email="test@example.com",
-        username="testuser",
+        email=f"test-{unique}@example.com",
+        username=f"testuser-{unique}",
         hashed_password=hash_password("Password123"),
     )
     db.add(user)

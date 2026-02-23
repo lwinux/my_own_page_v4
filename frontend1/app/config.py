@@ -2,7 +2,7 @@ import os
 
 
 class Config:
-    SECRET_KEY: str = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
+    SECRET_KEY: str = os.environ.get("SECRET_KEY")
     BACKEND_URL: str = os.environ.get("BACKEND_URL", "http://localhost:8000")
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SAMESITE: str = "Lax"
