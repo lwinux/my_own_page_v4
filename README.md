@@ -94,6 +94,19 @@ aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
 ```
 
+### HTTPS (TLS)
+
+The Ingress is configured for **plofile.diogohack.shop** with HTTP→HTTPS redirect. Put the TLS certificate in a Secret in the same namespace as the app:
+
+```bash
+kubectl create secret tls myownpage-tls \
+  --cert=path/to/fullchain.pem \
+  --key=path/to/privkey.pem \
+  -n "$K8S_NAMESPACE"
+```
+
+Or use [cert-manager](https://cert-manager.io/) with a `Certificate` that sets `secretName: myownpage-tls`. After the secret exists, the next deploy will enable HTTPS and redirect HTTP to HTTPS.
+
 ---
 
 ## Local Development

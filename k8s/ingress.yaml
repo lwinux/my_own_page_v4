@@ -12,13 +12,17 @@ metadata:
     #   alb.ingress.kubernetes.io/target-type: ip
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    # Redirect HTTP → HTTPS (requires TLS secret in the same namespace)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - plofile.diogohack.shop
+      secretName: myownpage-tls
   rules:
-    # No host restriction — accepts requests from any domain pointing to this LoadBalancer.
-    # To restrict to a specific domain, uncomment the line below and set INGRESS_HOST secret.
-    # - host: ${INGRESS_HOST}
-    - http:
+    - host: plofile.diogohack.shop
+      http:
         paths:
           - path: /api/
             pathType: Prefix
