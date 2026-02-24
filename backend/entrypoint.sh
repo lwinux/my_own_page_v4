@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "[entrypoint] Running database migrations..."
-alembic upgrade head
+echo "[entrypoint] Waiting for postgres to accept connections..."
+until alembic upgrade head; do
+  echo "[entrypoint] Migration failed (postgres not ready?), retrying in 5s..."
+  sleep 5
+done
 
 echo "[entrypoint] Starting backend API server..."
 exec uvicorn app.main:app \
