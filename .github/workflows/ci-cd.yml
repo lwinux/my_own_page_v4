@@ -188,6 +188,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Waiting for AWS LoadBalancer hostname (up to 3 min)..."
+          LB_HOST=""
           for i in $(seq 1 36); do
             LB_HOST=$(kubectl get svc ingress-nginx-controller \
               -n ingress-nginx \
@@ -200,7 +201,7 @@ jobs:
             echo "  attempt $i/36 — waiting 5s..."
             sleep 5
           done
-          if [ -z "${INGRESS_HOST:-}" ]; then
+          if [ -z "$LB_HOST" ]; then
             echo "ERROR: LoadBalancer hostname not available after 3 minutes"
             exit 1
           fi
