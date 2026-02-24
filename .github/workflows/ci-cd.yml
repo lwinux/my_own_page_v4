@@ -310,13 +310,34 @@ jobs:
       - name: Debug snapshot (on failure)
         if: failure()
         run: |
+          echo "====== PODS ======"
           kubectl -n "$K8S_NAMESPACE" get pods -o wide
+
+          echo "====== PVC ======"
           kubectl -n "$K8S_NAMESPACE" get pvc
-          kubectl -n "$K8S_NAMESPACE" get events --sort-by=.lastTimestamp | tail -80
+          kubectl -n "$K8S_NAMESPACE" describe pvc postgres-pvc 2>/dev/null || true
+
+          echo "====== EVENTS (last 50) ======"
+          kubectl -n "$K8S_NAMESPACE" get events \
+            --sort-by=.lastTimestamp | tail -50
+
           for deploy in postgres redis backend frontend1 frontend2; do
-            echo "=== $deploy ==="
+            echo ""
+            echo "========================================"
+            echo "=== DEPLOYMENT: $deploy ==="
+            echo "========================================"
             kubectl -n "$K8S_NAMESPACE" describe deployment/$deploy 2>/dev/null || true
-            POD=$(kubectl -n "$K8S_NAMESPACE" get pod -l app.kubernetes.io/name=$deploy \
+
+            POD=$(kubectl -n "$K8S_NAMESPACE" get pod \
+              -l app.kubernetes.io/name=$deploy \
               -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-            [ -n "$POD" ] && kubectl -n "$K8S_NAMESPACE" logs "$POD" --tail=100 || true
+
+            if [ -n "$POD" ]; then
+              echo "--- describe pod: $POD ---"
+              kubectl -n "$K8S_NAMESPACE" describe pod "$POD" || true
+              echo "--- logs: $POD ---"
+              kubectl -n "$K8S_NAMESPACE" logs "$POD" --all-containers --tail=100 || true
+            else
+              echo "(no pod found for $deploy)"
+            fi
           done
