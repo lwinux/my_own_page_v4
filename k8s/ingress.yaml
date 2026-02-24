@@ -18,7 +18,7 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - plofile.diogohack.shop
+        - profile.diogohack.shop
       secretName: myownpage-tls
   rules:
     - host: profile.diogohack.shop
