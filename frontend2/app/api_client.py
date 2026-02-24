@@ -17,7 +17,7 @@ class PublicAPIClient:
             if resp.status_code == 200:
                 return resp.json()
             return None
-        except httpx.RequestError:
+        except Exception:
             return None
 
 

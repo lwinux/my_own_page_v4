@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
+  name: frontend1
   labels:
-    app.kubernetes.io/name: backend
-    app.kubernetes.io/component: api
+    app.kubernetes.io/name: frontend1
+    app.kubernetes.io/component: dashboard
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: backend
+    app.kubernetes.io/name: frontend1
   ports:
     - name: http
       port: 80
