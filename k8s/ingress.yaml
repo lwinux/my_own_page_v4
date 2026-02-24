@@ -12,11 +12,6 @@ metadata:
     #   alb.ingress.kubernetes.io/target-type: ip
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    # Redirect bare root "/" to "/app"
-    nginx.ingress.kubernetes.io/server-snippet: |
-      location = / {
-        return 301 /app;
-      }
 spec:
   ingressClassName: nginx
   rules:
