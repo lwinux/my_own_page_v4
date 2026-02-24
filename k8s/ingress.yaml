@@ -12,8 +12,9 @@ metadata:
     #   alb.ingress.kubernetes.io/target-type: ip
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    # Redirect HTTP → HTTPS (requires TLS secret in the same namespace)
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # cert-manager: automatically issue and renew Let's Encrypt certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
   tls:

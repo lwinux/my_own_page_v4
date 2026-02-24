@@ -211,6 +211,19 @@ jobs:
             --wait \
             --timeout 5m
 
+      - name: Install cert-manager
+        run: |
+          set -euo pipefail
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          helm repo update
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --version v1.16.3 \
+            --set crds.enabled=true \
+            --wait \
+            --timeout 5m
+
       - name: Get Ingress LoadBalancer hostname
         run: |
           set -euo pipefail
@@ -303,6 +316,14 @@ jobs:
             | kubectl apply -n "$K8S_NAMESPACE" -f -
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend2/frontend2-service.yaml
 
+      - name: Apply ClusterIssuer
+        env:
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+        run: |
+          envsubst '${LETSENCRYPT_EMAIL}' \
+            < k8s/cert-manager/cluster-issuer.yaml \
+            | kubectl apply -f -
+
       - name: Apply Ingress
         run: kubectl apply -n "$K8S_NAMESPACE" -f k8s/ingress.yaml
 
@@ -324,9 +345,10 @@ jobs:
           echo "=== Ingress ==="
           kubectl -n "$K8S_NAMESPACE" get ingress
           echo ""
-          echo "Application URL: http://$INGRESS_HOST"
-          echo "Dashboard:        http://$INGRESS_HOST/app"
-          echo "API docs:         http://$INGRESS_HOST/api/docs"
+          echo "Application URL: https://profile.diogohack.shop"
+          echo "Dashboard:        https://profile.diogohack.shop/app"
+          echo "API docs:         https://profile.diogohack.shop/api/docs"
+          echo "LB hostname:      $INGRESS_HOST"
 
       - name: Debug snapshot (on failure)
         if: failure()

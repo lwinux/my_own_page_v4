@@ -9,5 +9,4 @@ data:
   BACKEND_URL: "http://backend"
   APP_ENV: "production"
   DEBUG: "false"
-  # "true" when behind HTTPS (nginx ingress TLS)
   SESSION_COOKIE_SECURE: "true"

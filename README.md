@@ -94,18 +94,20 @@ aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
 ```
 
-### HTTPS (TLS)
+### HTTPS (optional)
 
-The Ingress is configured for **profile.diogohack.shop** with HTTP→HTTPS redirect. Put the TLS certificate in a Secret in the same namespace as the app:
+The app is reachable at **http://profile.diogohack.shop** without a certificate. To enable HTTPS (certificate must be for **profile.diogohack.shop**, not plofile):
 
-```bash
-kubectl create secret tls myownpage-tls \
-  --cert=path/to/fullchain.pem \
-  --key=path/to/privkey.pem \
-  -n "$K8S_NAMESPACE"
-```
-
-Or use [cert-manager](https://cert-manager.io/) with a `Certificate` that sets `secretName: myownpage-tls`. After the secret exists, the next deploy will enable HTTPS and redirect HTTP to HTTPS.
+1. Create the TLS secret in the app namespace:
+   ```bash
+   kubectl create secret tls myownpage-tls \
+     --cert=path/to/fullchain.pem \
+     --key=path/to/privkey.pem \
+     -n "$K8S_NAMESPACE"
+   ```
+2. In `k8s/ingress.yaml`, uncomment the `tls` block and the `nginx.ingress.kubernetes.io/ssl-redirect: "true"` annotation.
+3. In `k8s/frontend1/frontend1-configmap.yaml`, set `SESSION_COOKIE_SECURE: "true"`.
+4. Redeploy. Then HTTPS will be served and HTTP will redirect to HTTPS.
 
 ---
 
