@@ -34,6 +34,15 @@ spec:
                 name: frontend1
                 port:
                   name: http
+          # Exact root "/" goes directly to the dashboard (frontend1).
+          # All other paths (/<slug>-<token>) fall through to the Prefix "/" below.
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: frontend1
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:
