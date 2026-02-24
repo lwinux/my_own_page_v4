@@ -1,0 +1,22 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # ${LETSENCRYPT_EMAIL} is substituted by envsubst in CI (GitHub Secret)
+    email: ${LETSENCRYPT_EMAIL}
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+            ingressTemplate:
+              metadata:
+                annotations:
+                  # Disable SSL redirect for the ACME HTTP-01 challenge path.
+                  # Without this, nginx redirects /.well-known/acme-challenge/
+                  # to HTTPS and Let's Encrypt validation fails.
+                  nginx.ingress.kubernetes.io/ssl-redirect: "false"

@@ -1,4 +1,6 @@
+
 # MyOwnPage
+
 
 > Create and publish tailored profile pages for every job application.  
 > Each publish generates a unique public URL — share a fresh link with every employer.
@@ -50,6 +52,7 @@ Browser ──► nginx Ingress (LoadBalancer :80)
 
 ## CI/CD Pipeline
 
+
 Push to branch `dev` triggers three sequential jobs:
 
 ```
@@ -93,6 +96,67 @@ aws iam attach-role-policy \
   --role-name <NODE_GROUP_ROLE_NAME> \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
 ```
+
+### HTTPS (optional)
+
+The app is reachable at **http://profile.diogohack.shop** without a certificate. To enable HTTPS (certificate must be for **profile.diogohack.shop**, not plofile):
+
+1. Create the TLS secret in the app namespace:
+   ```bash
+   kubectl create secret tls myownpage-tls \
+     --cert=path/to/fullchain.pem \
+     --key=path/to/privkey.pem \
+     -n "$K8S_NAMESPACE"
+   ```
+2. In `k8s/ingress.yaml`, uncomment the `tls` block and the `nginx.ingress.kubernetes.io/ssl-redirect: "true"` annotation.
+3. In `k8s/frontend1/frontend1-configmap.yaml`, set `SESSION_COOKIE_SECURE: "true"`.
+4. Redeploy. Then HTTPS will be served and HTTP will redirect to HTTPS.
+=======
+
+Push to branch `dev` triggers three sequential jobs:
+
+```
+test  ──►  build (matrix: 3 images)  ──►  deploy
+```
+
+| Job | What it does |
+|-----|-------------|
+| **test** | Runs `pytest` against a live postgres + redis service container |
+| **build** | Builds and pushes Docker images to Docker Hub tagged with `git sha` and `latest` |
+| **deploy** | Connects to EKS, installs EBS CSI Driver + nginx Ingress Controller (idempotent), applies all k8s manifests, waits for rollouts |
+
+All secrets are injected at deploy time from GitHub Secrets via `envsubst` — no credentials are stored in the repository.
+
+### Required GitHub Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `AWS_REGION` | e.g. `eu-central-1` |
+| `EKS_CLUSTER_NAME` | EKS cluster name |
+| `K8S_NAMESPACE` | Kubernetes namespace |
+| `AWS_ACCESS_KEY_ID` | IAM user key (needs `eks:DescribeCluster` + kubectl RBAC) |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret |
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token |
+| `POSTGRES_PASSWORD` | Strong random password for PostgreSQL |
+| `JWT_SECRET_KEY` | Random 32+ char string for JWT signing |
+| `FRONTEND1_SECRET_KEY` | Random 32+ char Flask session key |
+| `FRONTEND2_SECRET_KEY` | Random 32+ char Flask session key |
+
+Generate secrets with:
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### One-time AWS setup (before first deploy)
+
+Attach the EBS CSI policy to the EKS node group IAM role:
+```bash
+aws iam attach-role-policy \
+  --role-name <NODE_GROUP_ROLE_NAME> \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+```
+
 
 ---
 
