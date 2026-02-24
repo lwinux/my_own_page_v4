@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect
 from app.config import Config
 
 
@@ -18,6 +18,10 @@ def create_app() -> Flask:
     flask_app.register_blueprint(auth_bp, url_prefix="/app")
     flask_app.register_blueprint(dashboard_bp, url_prefix="/app")
     flask_app.register_blueprint(editor_bp, url_prefix="/app")
+
+    @flask_app.get("/")
+    def index():
+        return redirect("/app")
 
     @flask_app.get("/app/health")
     def health():
