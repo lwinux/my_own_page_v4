@@ -226,7 +226,9 @@ jobs:
           envsubst '${POSTGRES_PASSWORD}' \
             < k8s/db/postgres-secret.yaml \
             | kubectl apply -n "$K8S_NAMESPACE" -f -
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-pvc.yaml
+          # PVC spec is immutable after creation — only create if it does not exist yet
+          kubectl get pvc postgres-pvc -n "$K8S_NAMESPACE" 2>/dev/null \
+            || kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-pvc.yaml
 
           # backend (INGRESS_HOST comes from GITHUB_ENV, others from step env)
           envsubst '${INGRESS_HOST}' \
