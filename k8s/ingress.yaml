@@ -21,7 +21,7 @@ spec:
         - plofile.diogohack.shop
       secretName: myownpage-tls
   rules:
-    - host: plofile.diogohack.shop
+    - host: profile.diogohack.shop
       http:
         paths:
           - path: /api/
