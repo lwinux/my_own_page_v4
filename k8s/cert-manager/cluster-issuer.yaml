@@ -13,3 +13,10 @@ spec:
       - http01:
           ingress:
             ingressClassName: nginx
+            ingressTemplate:
+              metadata:
+                annotations:
+                  # Disable SSL redirect for the ACME HTTP-01 challenge path.
+                  # Without this, nginx redirects /.well-known/acme-challenge/
+                  # to HTTPS and Let's Encrypt validation fails.
+                  nginx.ingress.kubernetes.io/ssl-redirect: "false"

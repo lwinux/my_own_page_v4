@@ -324,6 +324,14 @@ jobs:
             < k8s/cert-manager/cluster-issuer.yaml \
             | kubectl apply -f -
 
+          # Delete any stale CertificateRequests so cert-manager re-issues
+          # with the updated solver (e.g. after fixing ssl-redirect for HTTP-01).
+          # || true — safe if none exist yet.
+          kubectl delete certificaterequest \
+            -l cert-manager.io/certificate-name=myownpage-tls \
+            -n "$K8S_NAMESPACE" \
+            --ignore-not-found
+
       - name: Apply Ingress
         run: kubectl apply -n "$K8S_NAMESPACE" -f k8s/ingress.yaml
 
