@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend1-config
+  labels:
+    app.kubernetes.io/name: frontend1
+    app.kubernetes.io/component: dashboard
+data:
+  BACKEND_URL: "http://backend"
+  APP_ENV: "production"
+  DEBUG: "false"
+  SESSION_COOKIE_SECURE: "true"

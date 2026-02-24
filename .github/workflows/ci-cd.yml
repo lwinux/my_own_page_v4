@@ -1,22 +1,91 @@
 name: CI/CD Pipeline
+
 on:
   push:
-    branches: [ main ]
+    branches: [dev]
   workflow_dispatch:
 
+# Required GitHub Secrets:
+#   AWS_REGION             - e.g. eu-central-1
+#   EKS_CLUSTER_NAME       - EKS cluster name
+#   K8S_NAMESPACE          - Kubernetes namespace to deploy into
+#   AWS_ACCESS_KEY_ID      - IAM user with eks:DescribeCluster + kubectl RBAC
+#   AWS_SECRET_ACCESS_KEY  - corresponding secret key
+#   DOCKERHUB_USERNAME     - Docker Hub username (used as image org prefix)
+#   DOCKERHUB_TOKEN        - Docker Hub access token
+#   POSTGRES_PASSWORD      - strong random password for PostgreSQL
+#   JWT_SECRET_KEY         - random 32+ char secret for signing JWT tokens
+#   FRONTEND1_SECRET_KEY   - random 32+ char Flask secret key for frontend1
+#   FRONTEND2_SECRET_KEY   - random 32+ char Flask secret key for frontend2
+#
+# Note: INGRESS_HOST is NOT a secret — it is discovered automatically from
+#       the nginx Ingress Controller LoadBalancer during the deploy job.
+
 env:
-  AWS_REGION:        ${{ secrets.AWS_REGION }}
-  EKS_CLUSTER_NAME:  ${{ secrets.EKS_CLUSTER_NAME }}
-  K8S_NAMESPACE:     ${{ secrets.K8S_NAMESPACE }}
-  DOCKER_ORG:        ${{ secrets.DOCKER_ORG }}
-  INGRESS_HOST:      ${{ secrets.INGRESS_HOST }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
 
 jobs:
+  # ── 1. Tests ──────────────────────────────────────────────────────────────────
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db
+          DATABASE_SYNC_URL: postgresql+psycopg2://test_user:test_pass@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: ci-test-secret-key-minimum-32-chars-long
+          APP_ENV: test
+          DEBUG: "false"
+        run: pytest tests/ -v
+
+  # ── 2. Build & push images ────────────────────────────────────────────────────
   build:
     name: Build & Push (${{ matrix.service.name }})
     runs-on: ubuntu-latest
+    needs: [test]
     strategy:
-      fail-fast: false #default ist in gh true - hiermit deaktiviert, damit alle services gebaut werden, auch wenn einer fehlschlägt
+      fail-fast: false
       matrix:
         service:
           - name: backend
@@ -47,21 +116,18 @@ jobs:
           context: ${{ matrix.service.context }}
           push: true
           tags: |
-            ${{ secrets.DOCKER_ORG }}/${{ matrix.service.image }}:${{ github.sha }}
-            ${{ secrets.DOCKER_ORG }}/${{ matrix.service.image }}:latest
-          cache-from: type=gha #lädt Cache beim nächsten Run für schnellere builds
-          cache-to: type=gha,mode=max #speichert Docker Layer im GitHub Cache, Docker hat keinen Cache
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service.image }}:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── 3. Deploy to EKS ──────────────────────────────────────────────────────────
   deploy:
     name: Deploy to EKS
     runs-on: ubuntu-latest
     needs: [build]
     permissions:
       contents: read
-
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
-      K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
 
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +144,12 @@ jobs:
         with:
           version: v1.29.0
 
-      - name: Update kubeconfig (EKS)
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Update kubeconfig
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/kube"
@@ -86,73 +157,156 @@ jobs:
             --region "$AWS_REGION" \
             --name "$EKS_CLUSTER_NAME" \
             --kubeconfig "$RUNNER_TEMP/kube/config"
-
           echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
 
-      - name: Verify kubectl context
+      - name: Verify cluster connectivity
         run: |
           set -euo pipefail
-          echo "KUBECONFIG=$KUBECONFIG"
-          kubectl config get-contexts
-          kubectl cluster-info    
+          kubectl cluster-info
+          aws sts get-caller-identity
 
-      - name: Who am I (STS)?
-        run: aws sts get-caller-identity
+      - name: Install nginx Ingress Controller
+        run: |
+          set -euo pipefail
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx --force-update
+          helm repo update
+
+          # upgrade --install is idempotent: installs on first run, upgrades on subsequent runs
+          helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+            --namespace ingress-nginx \
+            --create-namespace \
+            --set controller.service.type=LoadBalancer \
+            --wait \
+            --timeout 5m
+
+      - name: Get Ingress LoadBalancer hostname
+        run: |
+          set -euo pipefail
+          echo "Waiting for AWS LoadBalancer hostname (up to 3 min)..."
+          for i in $(seq 1 36); do
+            LB_HOST=$(kubectl get svc ingress-nginx-controller \
+              -n ingress-nginx \
+              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$LB_HOST" ]; then
+              echo "INGRESS_HOST=$LB_HOST" >> "$GITHUB_ENV"
+              echo "Ingress hostname: $LB_HOST"
+              break
+            fi
+            echo "  attempt $i/36 — waiting 5s..."
+            sleep 5
+          done
+          if [ -z "${INGRESS_HOST:-}" ]; then
+            echo "ERROR: LoadBalancer hostname not available after 3 minutes"
+            exit 1
+          fi
 
       - name: Ensure namespace exists
-        run: |
-          kubectl get ns "$K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$K8S_NAMESPACE"
+        run: kubectl get ns "$K8S_NAMESPACE" 2>/dev/null || kubectl create ns "$K8S_NAMESPACE"
 
-      - name: Apply prerequisites (secrets/configmaps/pvc)
-        run: |
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-secret.yaml
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-configmap.yaml
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-pvc.yaml
-
-          # --- Backend prerequisites ---
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/backend/backend-secrets.yaml
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/backend/backend-configmap.yaml
-
-      - name: Apply deployments
-        run: |
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-deployment.yaml
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/redis/redis-deployment.yaml
-          kubectl apply -n "$K8S_NAMESPACE" -f k8s/backend/backend-deployment.yaml
-
-      - name: Apply services
+      - name: Apply ConfigMaps & Secrets
+        env:
+          # INGRESS_HOST is set in GITHUB_ENV by the previous step
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          FRONTEND1_SECRET_KEY: ${{ secrets.FRONTEND1_SECRET_KEY }}
+          FRONTEND2_SECRET_KEY: ${{ secrets.FRONTEND2_SECRET_KEY }}
         run: |
           set -euo pipefail
 
+          # postgres
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-configmap.yaml
+          envsubst '${POSTGRES_PASSWORD}' \
+            < k8s/db/postgres-secret.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-pvc.yaml
+
+          # backend (INGRESS_HOST comes from GITHUB_ENV, others from step env)
+          envsubst '${INGRESS_HOST}' \
+            < k8s/backend/backend-configmap.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+          envsubst '${POSTGRES_PASSWORD}${JWT_SECRET_KEY}' \
+            < k8s/backend/backend-secrets.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+
+          # frontend1
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend1/frontend1-configmap.yaml
+          envsubst '${FRONTEND1_SECRET_KEY}' \
+            < k8s/frontend1/frontend1-secrets.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+
+          # frontend2
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend2/frontend2-configmap.yaml
+          envsubst '${FRONTEND2_SECRET_KEY}' \
+            < k8s/frontend2/frontend2-secrets.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+
+      - name: Apply Deployments & Services
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-deployment.yaml
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/db/postgres-service.yaml
+
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/redis/redis-deployment.yaml
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/redis/redis-service.yaml
+
+          envsubst '${DOCKERHUB_USERNAME}${IMAGE_TAG}' \
+            < k8s/backend/backend-deployment.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/backend/backend-service.yaml
+
+          envsubst '${DOCKERHUB_USERNAME}${IMAGE_TAG}' \
+            < k8s/frontend1/frontend1-deployment.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend1/frontend1-service.yaml
+
+          envsubst '${DOCKERHUB_USERNAME}${IMAGE_TAG}' \
+            < k8s/frontend2/frontend2-deployment.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
+          kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend2/frontend2-service.yaml
+
+      - name: Apply Ingress
+        run: |
+          # INGRESS_HOST is set in GITHUB_ENV by the "Get Ingress LoadBalancer hostname" step
+          envsubst '${INGRESS_HOST}' \
+            < k8s/ingress.yaml \
+            | kubectl apply -n "$K8S_NAMESPACE" -f -
 
       - name: Wait for rollouts
         run: |
           set -euo pipefail
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/postgres  --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/redis     --timeout=60s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/backend   --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/frontend1 --timeout=120s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/frontend2 --timeout=120s
 
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/postgres --timeout=180s
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/redis --timeout=180s
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/backend --timeout=180s
+      - name: Verify deployment
+        run: |
+          echo "=== Pods ==="
+          kubectl -n "$K8S_NAMESPACE" get pods -o wide
+          echo "=== Services ==="
+          kubectl -n "$K8S_NAMESPACE" get svc
+          echo "=== Ingress ==="
+          kubectl -n "$K8S_NAMESPACE" get ingress
+          echo ""
+          echo "Application URL: http://$INGRESS_HOST"
+          echo "Dashboard:        http://$INGRESS_HOST/app"
+          echo "API docs:         http://$INGRESS_HOST/api/docs"
 
       - name: Debug snapshot (on failure)
         if: failure()
         run: |
-          set -euo pipefail
-          echo "=== Pods ==="
           kubectl -n "$K8S_NAMESPACE" get pods -o wide
-          echo "=== PVC ==="
           kubectl -n "$K8S_NAMESPACE" get pvc
-          echo "=== Describe postgres pod ==="
-          POD=$(kubectl -n "$K8S_NAMESPACE" get pod -l app=postgres -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-          if [ -n "${POD:-}" ]; then
-            kubectl -n "$K8S_NAMESPACE" describe pod "$POD"
-            echo "=== Logs postgres pod ==="
-            kubectl -n "$K8S_NAMESPACE" logs "$POD" --all-containers=true --tail=200 || true
-          fi
-          echo "=== Events (last 80) ==="
-          kubectl -n "$K8S_NAMESPACE" get events --sort-by=.lastTimestamp | tail -n 80
-            - name: Sanity check (pods + services)
-              run: |
-                kubectl -n "$K8S_NAMESPACE" get pods -o wide
-                kubectl -n "$K8S_NAMESPACE" get svc -o wide
+          kubectl -n "$K8S_NAMESPACE" get events --sort-by=.lastTimestamp | tail -80
+          for deploy in postgres redis backend frontend1 frontend2; do
+            echo "=== $deploy ==="
+            kubectl -n "$K8S_NAMESPACE" describe deployment/$deploy 2>/dev/null || true
+            POD=$(kubectl -n "$K8S_NAMESPACE" get pod -l app.kubernetes.io/name=$deploy \
+              -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            [ -n "$POD" ] && kubectl -n "$K8S_NAMESPACE" logs "$POD" --tail=100 || true
+          done

@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myownpage-ingress
+  labels:
+    app.kubernetes.io/name: myownpage
+  annotations:
+    # nginx Ingress Controller (install via: helm install ingress-nginx ingress-nginx/ingress-nginx)
+    # To use AWS ALB instead: replace ingressClassName with "alb" and add
+    #   kubernetes.io/ingress.class: alb
+    #   alb.ingress.kubernetes.io/scheme: internet-facing
+    #   alb.ingress.kubernetes.io/target-type: ip
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    # INGRESS_HOST is substituted at deploy time via envsubst in CI
+    - host: ${INGRESS_HOST}
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  name: http
+          - path: /app
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend1
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend2
+                port:
+                  name: http

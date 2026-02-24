@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend2-config
+  labels:
+    app.kubernetes.io/name: frontend2
+    app.kubernetes.io/component: public
+data:
+  BACKEND_URL: "http://backend"
+  APP_ENV: "production"
+  DEBUG: "false"
