@@ -15,9 +15,10 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    # INGRESS_HOST is substituted at deploy time via envsubst in CI
-    - host: ${INGRESS_HOST}
-      http:
+    # No host restriction — accepts requests from any domain pointing to this LoadBalancer.
+    # To restrict to a specific domain, uncomment the line below and set INGRESS_HOST secret.
+    # - host: ${INGRESS_HOST}
+    - http:
         paths:
           - path: /api/
             pathType: Prefix

@@ -304,11 +304,7 @@ jobs:
           kubectl apply -n "$K8S_NAMESPACE" -f k8s/frontend2/frontend2-service.yaml
 
       - name: Apply Ingress
-        run: |
-          # INGRESS_HOST is set in GITHUB_ENV by the "Get Ingress LoadBalancer hostname" step
-          envsubst '${INGRESS_HOST}' \
-            < k8s/ingress.yaml \
-            | kubectl apply -n "$K8S_NAMESPACE" -f -
+        run: kubectl apply -n "$K8S_NAMESPACE" -f k8s/ingress.yaml
 
       - name: Wait for rollouts
         run: |
