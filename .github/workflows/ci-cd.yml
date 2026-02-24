@@ -145,14 +145,16 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: v1.29.0
+        run: |
+          curl -LO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+          kubectl version --client
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.14.4
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+            | DESIRED_VERSION=v3.14.4 bash
+          helm version
 
       - name: Update kubeconfig
         run: |
