@@ -8,4 +8,4 @@ metadata:
 data:
   BACKEND_URL: "http://backend"
   APP_ENV: "production"
-  DEBUG: "true"
+  DEBUG: "false"
