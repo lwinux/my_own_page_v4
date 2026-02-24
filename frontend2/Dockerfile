@@ -19,4 +19,4 @@ EXPOSE 5002
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5002/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5002", "--workers", "2", "--timeout", "60", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5002", "--workers", "2", "--timeout", "60", "wsgi:app"]
