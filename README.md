@@ -96,7 +96,7 @@ aws iam attach-role-policy \
 
 ### HTTPS (TLS)
 
-The Ingress is configured for **plofile.diogohack.shop** with HTTP→HTTPS redirect. Put the TLS certificate in a Secret in the same namespace as the app:
+The Ingress is configured for **profile.diogohack.shop** with HTTP→HTTPS redirect. Put the TLS certificate in a Secret in the same namespace as the app:
 
 ```bash
 kubectl create secret tls myownpage-tls \
