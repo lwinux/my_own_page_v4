@@ -8,7 +8,9 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: gp2
+  # storageClassName is intentionally omitted to use the cluster default.
+  # On EKS this is typically gp2 or gp3 depending on the cluster version.
+  # To use a specific class, set storageClassName explicitly (e.g. gp2 or gp3).
   resources:
     requests:
       storage: 10Gi
