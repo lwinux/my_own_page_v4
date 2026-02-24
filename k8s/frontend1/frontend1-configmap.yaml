@@ -9,4 +9,5 @@ data:
   BACKEND_URL: "http://backend"
   APP_ENV: "production"
   DEBUG: "false"
-  SESSION_COOKIE_SECURE: "true"
+  # Set to "true" only when serving over HTTPS
+  SESSION_COOKIE_SECURE: "false"
