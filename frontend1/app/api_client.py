@@ -68,7 +68,14 @@ class BackendClient:
 
         if raise_on_error and resp.status_code >= 400:
             try:
-                detail = resp.json().get("detail", resp.text)
+                body = resp.json()
+                detail = body.get("detail", resp.text)
+                # Pydantic validation errors (422) return detail as a list of objects
+                if isinstance(detail, list):
+                    detail = "; ".join(
+                        e.get("msg", str(e)) if isinstance(e, dict) else str(e)
+                        for e in detail
+                    )
             except Exception:
                 detail = resp.text
             raise APIError(resp.status_code, detail)
